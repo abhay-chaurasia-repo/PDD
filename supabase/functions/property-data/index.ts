@@ -1,166 +1,63 @@
-import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
-};
-
-interface AttomPropertyResponse {
-  status: {
-    version: string;
-    code: number;
-    msg: string;
-    total: number;
-    transactionID: string;
-  };
-  property: Array<{
-    identifier: {
-      Id: number;
-      fips: string;
-      apn: string;
-    };
-    address: {
-      country: string;
-      countrySubd: string;
-      line1: string;
-      line2: string;
-      locality: string;
-      matchCode: string;
-      oneLine: string;
-      postal1: string;
-      postal2: string;
-      postal3: string;
-    };
-    summary: {
-      yearbuilt?: number;
-    };
-    building: {
-      size: {
-        universalsize?: number;
-      };
-      rooms: {
-        bedrooms?: number;
-        bathstotal?: number;
-      };
-    };
-  }>;
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-Deno.serve(async (req: Request) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, {
-      status: 200,
-      headers: corsHeaders,
-    });
+serve(async (req) => {
+  // Handle CORS pre-flight
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders })
   }
 
   try {
-    const url = new URL(req.url);
-    const address = url.searchParams.get("address");
+    const { searchParams } = new URL(req.url)
+    const address = searchParams.get('address')
 
     if (!address) {
-      return new Response(
-        JSON.stringify({ error: "Address parameter is required" }),
-        {
-          status: 400,
-          headers: {
-            ...corsHeaders,
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      return new Response(JSON.stringify({ error: 'No address provided' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
     }
 
-    const attomApiKey = Deno.env.get("ATTOM_API_KEY");
-    if (!attomApiKey) {
-      return new Response(
-        JSON.stringify({ error: "ATTOM API key not configured" }),
-        {
-          status: 500,
-          headers: {
-            ...corsHeaders,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-    }
-
-    const attomUrl = `https://api.gateway.attomdata.com/propertyapi/v1.0.0/property/basicprofile?address=${encodeURIComponent(
-      address
-    )}`;
-
-    const attomResponse = await fetch(attomUrl, {
-      method: "GET",
-      headers: {
-        apikey: attomApiKey,
-        Accept: "application/json",
-      },
-    });
-
-    if (!attomResponse.ok) {
-      const errorText = await attomResponse.text();
-      console.error("ATTOM API error:", errorText);
-      return new Response(
-        JSON.stringify({
-          error: "Failed to fetch property data",
-          details: errorText,
-        }),
-        {
-          status: attomResponse.status,
-          headers: {
-            ...corsHeaders,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-    }
-
-    const data: AttomPropertyResponse = await attomResponse.json();
-
-    if (!data.property || data.property.length === 0) {
-      return new Response(
-        JSON.stringify({ error: "No property data found for this address" }),
-        {
-          status: 404,
-          headers: {
-            ...corsHeaders,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-    }
-
-    const property = data.property[0];
-
-    const propertyData = {
-      address: property.address.oneLine,
-      sqft: property.building?.size?.universalsize || null,
-      bedrooms: property.building?.rooms?.bedrooms || null,
-      bathrooms: property.building?.rooms?.bathstotal || null,
-      yearBuilt: property.summary?.yearbuilt || null,
-    };
-
-    return new Response(JSON.stringify(propertyData), {
-      headers: {
-        ...corsHeaders,
-        "Content-Type": "application/json",
-      },
-    });
-  } catch (error) {
-    console.error("Error in property-data function:", error);
-    return new Response(
-      JSON.stringify({
-        error: "Internal server error",
-        message: error instanceof Error ? error.message : "Unknown error",
-      }),
+    const response = await fetch(
+      `https://api.gateway.attomdata.com/propertyapi/v1.0.0/property/basicprofile?address=${encodeURIComponent(address)}`,
       {
-        status: 500,
         headers: {
-          ...corsHeaders,
-          "Content-Type": "application/json",
+          'apikey': Deno.env.get('ATTOM_API_KEY') || '',
+          'Accept': 'application/json',
         },
       }
-    );
+    )
+
+    const data = await response.json()
+    const property = data.property?.[0]
+
+    if (!property) {
+      return new Response(JSON.stringify({ error: 'Property not found' }), {
+        status: 404,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    // MAP DATA - Note the 'universalSize' with a capital S
+    const mappedData = {
+      sqft: property.building?.size?.universalSize || 0,
+      bedrooms: property.building?.rooms?.beds || 0,
+      bathrooms: property.building?.rooms?.bathstotal || 0,
+      yearBuilt: property.summary?.yearbuilt || 0,
+      address: property.address?.oneLine || address
+    }
+
+    return new Response(JSON.stringify(mappedData), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
+  } catch (error) {
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
   }
-});
+})
