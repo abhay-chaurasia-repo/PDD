@@ -51,12 +51,19 @@ function App() {
 
     try {
       const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/property-data?address=${encodeURIComponent(address)}`;
+      const token = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+      console.log('Fetching property data from:', apiUrl);
 
       const response = await fetch(apiUrl, {
         headers: {
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Authorization': `Bearer ${token}`,
+          'apikey': token,
+          'Content-Type': 'application/json',
         },
       });
+
+      console.log('API response status:', response.status);
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -65,6 +72,11 @@ function App() {
       }
 
       const data = await response.json();
+      console.log('API response data:', data);
+
+      if (data.address) {
+        setAddress(data.address);
+      }
 
       setCountyData({
         sqft: data.sqft,
@@ -74,6 +86,7 @@ function App() {
       });
     } catch (error) {
       console.error('Error fetching county data:', error);
+      console.error('Error details:', error instanceof Error ? error.message : 'Unknown error');
       setCountyData({
         sqft: null,
         bedrooms: null,
