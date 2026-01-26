@@ -33,7 +33,7 @@ serve(async (req) => {
     console.log('Fetching property data for address:', address);
 
     const response = await fetch(
-      `https://api.gateway.attomdata.com/propertyapi/v1.0.0/property/basicprofile?address=${encodeURIComponent(address)}`,
+      `https://api.gateway.attomdata.com/propertyapi/v1.0.0/property/detail?address=${encodeURIComponent(address)}`,
       {
         headers: {
           'apikey': attomApiKey,
