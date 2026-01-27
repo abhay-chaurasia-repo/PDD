@@ -9,6 +9,8 @@ interface PropertyData {
   bedrooms: number | null;
   bathrooms: number | null;
   yearBuilt: number | null;
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 interface Mismatch {
@@ -88,6 +90,8 @@ function App() {
         bedrooms: data.bedrooms,
         bathrooms: data.bathrooms,
         yearBuilt: data.yearBuilt,
+        latitude: data.latitude,
+        longitude: data.longitude,
       });
     } catch (error) {
       console.error('Error fetching county data:', error);
@@ -187,8 +191,8 @@ function App() {
         listing_year_built: listingData.yearBuilt,
         checklist_data: DEFAULT_CHECKLIST,
         is_verified: false,
-        latitude: null,
-        longitude: null,
+        latitude: countyData.latitude || null,
+        longitude: countyData.longitude || null,
         notes: null,
       };
 

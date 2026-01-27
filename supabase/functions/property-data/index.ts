@@ -13,17 +13,21 @@ interface AttomPropertyResponse {
     msg: string;
   };
   property: Array<{
-    address: { oneLine: string };
+    address: {
+      oneLine: string;
+      latitude?: string;
+      longitude?: string;
+    };
     summary: {
-      yearBuilt?: number; // Corrected from yearbuilt
+      yearBuilt?: number;
     };
     building: {
       size: {
-        universalSize?: number; // Corrected from universalsize
+        universalSize?: number;
       };
       rooms: {
-        bedrooms?: number;  // Corrected from beds
-        bathsTotal?: number; // Corrected from bathstotal
+        bedrooms?: number;
+        bathsTotal?: number;
       };
     };
   }>;
@@ -69,10 +73,12 @@ Deno.serve(async (req: Request) => {
     // 2. UPDATED MAPPING WITH CORRECT CASING
     const propertyData = {
       address: property.address.oneLine,
-      sqft: property.building?.size?.universalSize || null, // Corrected
-      bedrooms: property.building?.rooms?.beds || null, // Corrected
-      bathrooms: property.building?.rooms?.bathsTotal || null, // Corrected
-      yearBuilt: property.summary?.yearBuilt || null, // Corrected
+      sqft: property.building?.size?.universalSize || null,
+      bedrooms: property.building?.rooms?.bedrooms || null,
+      bathrooms: property.building?.rooms?.bathsTotal || null,
+      yearBuilt: property.summary?.yearBuilt || null,
+      latitude: property.address?.latitude ? parseFloat(property.address.latitude) : null,
+      longitude: property.address?.longitude ? parseFloat(property.address.longitude) : null,
     };
 
     return new Response(JSON.stringify(propertyData), {
