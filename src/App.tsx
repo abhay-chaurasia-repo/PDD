@@ -1,6 +1,8 @@
 import { useState } from 'react';
-import { Home, Save, Check, Loader2 } from 'lucide-react';
+import { Home, Save, Check, Loader2, List } from 'lucide-react';
 import { supabase, SavedProperty } from './lib/supabase';
+import WatchlistDashboard from './components/WatchlistDashboard';
+import PropertyDetail from './components/PropertyDetail';
 
 interface PropertyData {
   sqft: number | null;
@@ -16,9 +18,12 @@ interface Mismatch {
   message: string;
 }
 
+type View = 'search' | 'comparison' | 'watchlist' | 'property-detail';
+
 function App() {
+  const [currentView, setCurrentView] = useState<View>('watchlist');
+  const [selectedProperty, setSelectedProperty] = useState<SavedProperty | null>(null);
   const [address, setAddress] = useState('');
-  const [showComparison, setShowComparison] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoadingCountyData, setIsLoadingCountyData] = useState(false);
@@ -40,7 +45,7 @@ function App() {
   const handleAddressSubmit = async () => {
     if (!address.trim()) return;
 
-    setShowComparison(true);
+    setCurrentView('comparison');
     setIsLoadingCountyData(true);
     setCountyData({
       sqft: null,
@@ -153,6 +158,23 @@ function App() {
   const handleSaveProperty = async () => {
     setIsSaving(true);
     try {
+      const DEFAULT_CHECKLIST = [
+        { id: 'roof', category: 'Physical Audit', label: 'Inspect roof condition', completed: false },
+        { id: 'hvac', category: 'Physical Audit', label: 'Check HVAC system age & function', completed: false },
+        { id: 'windows', category: 'Physical Audit', label: 'Examine windows for damage', completed: false },
+        { id: 'foundation', category: 'Physical Audit', label: 'Inspect foundation for cracks', completed: false },
+        { id: 'plumbing', category: 'Physical Audit', label: 'Test water pressure & drainage', completed: false },
+        { id: 'electrical', category: 'Physical Audit', label: 'Check electrical panel & outlets', completed: false },
+        { id: 'hoa', category: 'Legal/Financial', label: 'Review HOA fees & restrictions', completed: false },
+        { id: 'flood', category: 'Legal/Financial', label: 'Verify flood zone status', completed: false },
+        { id: 'taxes', category: 'Legal/Financial', label: 'Research property tax history', completed: false },
+        { id: 'permits', category: 'Legal/Financial', label: 'Check for unpermitted additions', completed: false },
+        { id: 'neighborhood', category: 'Neighborhood', label: 'Walk the neighborhood', completed: false },
+        { id: 'schools', category: 'Neighborhood', label: 'Research school ratings', completed: false },
+        { id: 'crime', category: 'Neighborhood', label: 'Check crime statistics', completed: false },
+        { id: 'noise', category: 'Neighborhood', label: 'Visit at different times for noise levels', completed: false },
+      ];
+
       const propertyData: SavedProperty = {
         address,
         county_sqft: countyData.sqft,
@@ -163,6 +185,11 @@ function App() {
         listing_bedrooms: listingData.bedrooms,
         listing_bathrooms: listingData.bathrooms,
         listing_year_built: listingData.yearBuilt,
+        checklist_data: DEFAULT_CHECKLIST,
+        is_verified: false,
+        latitude: null,
+        longitude: null,
+        notes: null,
       };
 
       const { error } = await supabase
@@ -172,7 +199,10 @@ function App() {
       if (error) throw error;
 
       setShowSuccess(true);
-      setTimeout(() => setShowSuccess(false), 3000);
+      setTimeout(() => {
+        setShowSuccess(false);
+        setCurrentView('watchlist');
+      }, 2000);
     } catch (error) {
       console.error('Error saving property:', error);
     } finally {
@@ -180,10 +210,44 @@ function App() {
     }
   };
 
-  if (!showComparison) {
+  if (currentView === 'watchlist') {
+    return (
+      <WatchlistDashboard
+        onPropertySelect={(property) => {
+          setSelectedProperty(property);
+          setCurrentView('property-detail');
+        }}
+        onNewSearch={() => setCurrentView('search')}
+      />
+    );
+  }
+
+  if (currentView === 'property-detail' && selectedProperty) {
+    return (
+      <PropertyDetail
+        property={selectedProperty}
+        onBack={() => setCurrentView('watchlist')}
+        onUpdate={() => {
+          setCurrentView('watchlist');
+        }}
+      />
+    );
+  }
+
+  if (currentView === 'search') {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center px-4">
         <div className="w-full max-w-2xl">
+          <div className="flex justify-end mb-4">
+            <button
+              onClick={() => setCurrentView('watchlist')}
+              className="flex items-center gap-2 px-4 py-2 bg-gray-900 text-yellow-400 rounded-lg hover:bg-gray-800 font-semibold"
+            >
+              <List className="w-5 h-5" />
+              My Watchlist
+            </button>
+          </div>
+
           <div className="text-center mb-12">
             <div className="inline-flex items-center justify-center w-20 h-20 bg-yellow-400 rounded-lg mb-6">
               <Home className="w-12 h-12 text-black" />
@@ -226,10 +290,10 @@ function App() {
   return (
     <div className="min-h-screen bg-black text-white">
       <div className="max-w-6xl mx-auto px-4 py-6 md:py-8">
-        <div className="mb-6">
+        <div className="mb-6 flex gap-3">
           <button
             onClick={() => {
-              setShowComparison(false);
+              setCurrentView('search');
               setAddress('');
               setIsLoadingCountyData(false);
               setCountyData({
@@ -250,6 +314,14 @@ function App() {
           >
             <Home className="w-5 h-5" />
             New Search
+          </button>
+          <button
+            onClick={() => setCurrentView('watchlist')}
+            className="flex items-center gap-2 px-4 py-3 bg-gray-900 text-yellow-400 rounded-lg hover:bg-gray-800 font-semibold"
+            style={{ minHeight: '48px' }}
+          >
+            <List className="w-5 h-5" />
+            My Watchlist
           </button>
         </div>
 

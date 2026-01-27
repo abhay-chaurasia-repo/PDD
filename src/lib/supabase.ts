@@ -9,6 +9,13 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
+export interface ChecklistItem {
+  id: string;
+  category: string;
+  label: string;
+  completed: boolean;
+}
+
 export interface SavedProperty {
   id?: string;
   address: string;
@@ -20,6 +27,11 @@ export interface SavedProperty {
   listing_bedrooms: number | null;
   listing_bathrooms: number | null;
   listing_year_built: number | null;
+  checklist_data?: ChecklistItem[];
+  is_verified?: boolean;
+  latitude?: number | null;
+  longitude?: number | null;
+  notes?: string | null;
   created_at?: string;
   updated_at?: string;
 }
