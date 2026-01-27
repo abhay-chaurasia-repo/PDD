@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Home, CheckCircle, AlertCircle } from 'lucide-react';
+import { Home, CheckCircle, AlertCircle, Trash2 } from 'lucide-react';
 import { supabase, SavedProperty } from '../lib/supabase';
 
 interface WatchlistDashboardProps {
@@ -28,6 +28,27 @@ export default function WatchlistDashboard({ onPropertySelect, onNewSearch }: Wa
       console.error('Error loading properties:', error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleDeleteProperty = async (e: React.MouseEvent, propertyId: string) => {
+    e.stopPropagation();
+
+    if (!confirm('Are you sure you want to remove this property from your watchlist?')) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('saved_properties')
+        .delete()
+        .eq('id', propertyId);
+
+      if (error) throw error;
+
+      setProperties(properties.filter(p => p.id !== propertyId));
+    } catch (error) {
+      console.error('Error deleting property:', error);
     }
   };
 
@@ -120,22 +141,33 @@ export default function WatchlistDashboard({ onPropertySelect, onNewSearch }: Wa
               return (
                 <div
                   key={property.id}
-                  onClick={() => onPropertySelect(property)}
-                  className="bg-gray-900 rounded-lg p-6 hover:bg-gray-800 transition-colors cursor-pointer border-2 border-transparent hover:border-yellow-400"
+                  className="bg-gray-900 rounded-lg p-6 hover:bg-gray-800 transition-colors border-2 border-transparent hover:border-yellow-400 relative"
                 >
-                  <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-                    <div className="flex-1">
-                      <div className="flex items-start gap-3 mb-3">
-                        <h3 className="text-xl md:text-2xl font-bold text-white">
-                          {property.address}
-                        </h3>
-                        {property.is_verified && (
-                          <div className="flex items-center gap-1 px-3 py-1 bg-green-600 rounded-full text-sm font-semibold whitespace-nowrap">
-                            <CheckCircle className="w-4 h-4" />
-                            Verified
-                          </div>
-                        )}
-                      </div>
+                  <button
+                    onClick={(e) => handleDeleteProperty(e, property.id!)}
+                    className="absolute top-4 right-4 p-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors z-10"
+                    title="Remove from watchlist"
+                  >
+                    <Trash2 className="w-5 h-5" />
+                  </button>
+
+                  <div
+                    onClick={() => onPropertySelect(property)}
+                    className="cursor-pointer"
+                  >
+                    <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                      <div className="flex-1 pr-12">
+                        <div className="flex items-start gap-3 mb-3">
+                          <h3 className="text-xl md:text-2xl font-bold text-white">
+                            {property.address}
+                          </h3>
+                          {property.is_verified && (
+                            <div className="flex items-center gap-1 px-3 py-1 bg-green-600 rounded-full text-sm font-semibold whitespace-nowrap">
+                              <CheckCircle className="w-4 h-4" />
+                              Verified
+                            </div>
+                          )}
+                        </div>
 
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4 text-sm">
                         <div>
@@ -174,23 +206,24 @@ export default function WatchlistDashboard({ onPropertySelect, onNewSearch }: Wa
                       )}
                     </div>
 
-                    <div className="md:w-48">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm text-gray-400">Checklist</span>
-                        <span className="text-sm font-bold text-yellow-400">{progress}%</span>
-                      </div>
-                      <div className="w-full bg-gray-700 rounded-full h-3">
-                        <div
-                          className="bg-yellow-400 h-3 rounded-full transition-all duration-300"
-                          style={{ width: `${progress}%` }}
-                        />
-                      </div>
-                      {property.checklist_data && property.checklist_data.length > 0 && (
-                        <div className="text-xs text-gray-500 mt-1">
-                          {property.checklist_data.filter(item => item.completed).length} of{' '}
-                          {property.checklist_data.length} items
+                      <div className="md:w-48">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm text-gray-400">Checklist</span>
+                          <span className="text-sm font-bold text-yellow-400">{progress}%</span>
                         </div>
-                      )}
+                        <div className="w-full bg-gray-700 rounded-full h-3">
+                          <div
+                            className="bg-yellow-400 h-3 rounded-full transition-all duration-300"
+                            style={{ width: `${progress}%` }}
+                          />
+                        </div>
+                        {property.checklist_data && property.checklist_data.length > 0 && (
+                          <div className="text-xs text-gray-500 mt-1">
+                            {property.checklist_data.filter(item => item.completed).length} of{' '}
+                            {property.checklist_data.length} items
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
