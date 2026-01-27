@@ -22,7 +22,7 @@ interface AttomPropertyResponse {
         universalSize?: number; // Corrected from universalsize
       };
       rooms: {
-        bedrooms?: number;
+        bedrooms?: number;  // Corrected from beds
         bathsTotal?: number; // Corrected from bathstotal
       };
     };
@@ -70,7 +70,7 @@ Deno.serve(async (req: Request) => {
     const propertyData = {
       address: property.address.oneLine,
       sqft: property.building?.size?.universalSize || null, // Corrected
-      bedrooms: property.building?.rooms?.bedrooms || null,
+      bedrooms: property.building?.rooms?.beds || null, // Corrected
       bathrooms: property.building?.rooms?.bathsTotal || null, // Corrected
       yearBuilt: property.summary?.yearBuilt || null, // Corrected
     };
