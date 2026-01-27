@@ -16,6 +16,24 @@ export interface ChecklistItem {
   completed: boolean;
 }
 
+export interface SchoolInfo {
+  name: string | null;
+  rating: number | null;
+  distance: number | null;
+}
+
+export interface NeighborhoodData {
+  schools: {
+    elementary: SchoolInfo | null;
+    middle: SchoolInfo | null;
+    high: SchoolInfo | null;
+  };
+  marketData: {
+    medianSalePrice: number | null;
+    priceRange: string | null;
+  };
+}
+
 export interface SavedProperty {
   id?: string;
   address: string;
@@ -32,6 +50,16 @@ export interface SavedProperty {
   latitude?: number | null;
   longitude?: number | null;
   notes?: string | null;
+  neighborhood_data?: NeighborhoodData | null;
   created_at?: string;
   updated_at?: string;
+}
+
+export interface CommunityInsight {
+  id?: string;
+  property_id: string;
+  user_id?: string | null;
+  category: string;
+  note: string;
+  created_at?: string;
 }

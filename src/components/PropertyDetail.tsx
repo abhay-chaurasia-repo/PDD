@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, MapPin, CheckCircle, Loader2, AlertCircle } from 'lucide-react';
-import { supabase, SavedProperty, ChecklistItem } from '../lib/supabase';
+import { ArrowLeft, MapPin, CheckCircle, Loader2, AlertCircle, GraduationCap, TrendingUp, MessageSquare, AlertTriangle, ThumbsUp } from 'lucide-react';
+import { supabase, SavedProperty, ChecklistItem, CommunityInsight } from '../lib/supabase';
 
 interface PropertyDetailProps {
   property: SavedProperty;
@@ -35,6 +35,11 @@ export default function PropertyDetail({ property, onBack, onUpdate }: PropertyD
   );
   const [notes, setNotes] = useState(property.notes || '');
   const [isSavingNotes, setIsSavingNotes] = useState(false);
+  const [insights, setInsights] = useState<CommunityInsight[]>([]);
+  const [isLoadingInsights, setIsLoadingInsights] = useState(true);
+  const [newInsightCategory, setNewInsightCategory] = useState('');
+  const [newInsightNote, setNewInsightNote] = useState('');
+  const [isSubmittingInsight, setIsSubmittingInsight] = useState(false);
 
   const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
     const R = 6371e3;
@@ -137,6 +142,55 @@ export default function PropertyDetail({ property, onBack, onUpdate }: PropertyD
     }
   };
 
+  const loadInsights = async () => {
+    if (!property.id) return;
+
+    setIsLoadingInsights(true);
+    try {
+      const { data, error } = await supabase
+        .from('community_insights')
+        .select('*')
+        .eq('property_id', property.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setInsights(data || []);
+    } catch (error) {
+      console.error('Error loading insights:', error);
+    } finally {
+      setIsLoadingInsights(false);
+    }
+  };
+
+  const handleSubmitInsight = async () => {
+    if (!property.id || !newInsightCategory || !newInsightNote.trim()) return;
+
+    setIsSubmittingInsight(true);
+    try {
+      const { error } = await supabase
+        .from('community_insights')
+        .insert({
+          property_id: property.id,
+          category: newInsightCategory,
+          note: newInsightNote.trim(),
+        });
+
+      if (error) throw error;
+
+      setNewInsightCategory('');
+      setNewInsightNote('');
+      await loadInsights();
+    } catch (error) {
+      console.error('Error submitting insight:', error);
+    } finally {
+      setIsSubmittingInsight(false);
+    }
+  };
+
+  useEffect(() => {
+    loadInsights();
+  }, [property.id]);
+
   const groupedChecklist = checklist.reduce((acc, item) => {
     if (!acc[item.category]) {
       acc[item.category] = [];
@@ -187,6 +241,47 @@ export default function PropertyDetail({ property, onBack, onUpdate }: PropertyD
   };
 
   const mismatches = getMismatchInfo();
+
+  const getRatingColor = (rating: number | null) => {
+    if (!rating) return 'text-gray-400';
+    if (rating >= 8) return 'text-green-400';
+    if (rating >= 6) return 'text-yellow-400';
+    return 'text-red-400';
+  };
+
+  const getRatingBgColor = (rating: number | null) => {
+    if (!rating) return 'bg-gray-700';
+    if (rating >= 8) return 'bg-green-600';
+    if (rating >= 6) return 'bg-yellow-600';
+    return 'bg-red-600';
+  };
+
+  const calculateNeighborhoodScore = () => {
+    if (!property.neighborhood_data?.schools) return null;
+    const schools = property.neighborhood_data.schools;
+    const ratings = [
+      schools.elementary?.rating,
+      schools.middle?.rating,
+      schools.high?.rating,
+    ].filter((r): r is number => r !== null && r !== undefined);
+
+    if (ratings.length === 0) return null;
+    return Math.round(ratings.reduce((sum, r) => sum + r, 0) / ratings.length);
+  };
+
+  const neighborhoodScore = calculateNeighborhoodScore();
+
+  const getInsightIcon = (category: string) => {
+    if (category === 'Red Flag') return <AlertTriangle className="w-5 h-5 text-red-400" />;
+    if (category === 'Pro') return <ThumbsUp className="w-5 h-5 text-green-400" />;
+    return <MessageSquare className="w-5 h-5 text-yellow-400" />;
+  };
+
+  const getInsightBgColor = (category: string) => {
+    if (category === 'Red Flag') return 'bg-red-950 border-red-800';
+    if (category === 'Pro') return 'bg-green-950 border-green-800';
+    return 'bg-gray-800 border-gray-700';
+  };
 
   return (
     <div className="min-h-screen bg-black text-white">
@@ -293,6 +388,120 @@ export default function PropertyDetail({ property, onBack, onUpdate }: PropertyD
           )}
         </div>
 
+        {property.neighborhood_data && (
+          <div className="bg-gray-900 rounded-lg p-6 mb-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-yellow-400 flex items-center gap-3">
+                <GraduationCap className="w-7 h-7" />
+                Neighborhood Intelligence
+              </h2>
+              {neighborhoodScore && (
+                <div className={`px-4 py-2 ${getRatingBgColor(neighborhoodScore)} rounded-lg font-bold text-lg`}>
+                  Score: {neighborhoodScore}/10
+                </div>
+              )}
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-6 mb-6">
+              <div>
+                <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                  <GraduationCap className="w-5 h-5 text-yellow-400" />
+                  School Ratings
+                </h3>
+                <div className="space-y-3">
+                  {property.neighborhood_data.schools.elementary && (
+                    <div className="bg-gray-800 rounded-lg p-4">
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <div className="text-sm text-gray-400">Elementary School</div>
+                          <div className="font-semibold">
+                            {property.neighborhood_data.schools.elementary.name || 'N/A'}
+                          </div>
+                          {property.neighborhood_data.schools.elementary.distance && (
+                            <div className="text-xs text-gray-500">
+                              {property.neighborhood_data.schools.elementary.distance.toFixed(1)} mi
+                            </div>
+                          )}
+                        </div>
+                        <div className={`text-2xl font-bold ${getRatingColor(property.neighborhood_data.schools.elementary.rating)}`}>
+                          {property.neighborhood_data.schools.elementary.rating || '—'}/10
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {property.neighborhood_data.schools.middle && (
+                    <div className="bg-gray-800 rounded-lg p-4">
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <div className="text-sm text-gray-400">Middle School</div>
+                          <div className="font-semibold">
+                            {property.neighborhood_data.schools.middle.name || 'N/A'}
+                          </div>
+                          {property.neighborhood_data.schools.middle.distance && (
+                            <div className="text-xs text-gray-500">
+                              {property.neighborhood_data.schools.middle.distance.toFixed(1)} mi
+                            </div>
+                          )}
+                        </div>
+                        <div className={`text-2xl font-bold ${getRatingColor(property.neighborhood_data.schools.middle.rating)}`}>
+                          {property.neighborhood_data.schools.middle.rating || '—'}/10
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {property.neighborhood_data.schools.high && (
+                    <div className="bg-gray-800 rounded-lg p-4">
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <div className="text-sm text-gray-400">High School</div>
+                          <div className="font-semibold">
+                            {property.neighborhood_data.schools.high.name || 'N/A'}
+                          </div>
+                          {property.neighborhood_data.schools.high.distance && (
+                            <div className="text-xs text-gray-500">
+                              {property.neighborhood_data.schools.high.distance.toFixed(1)} mi
+                            </div>
+                          )}
+                        </div>
+                        <div className={`text-2xl font-bold ${getRatingColor(property.neighborhood_data.schools.high.rating)}`}>
+                          {property.neighborhood_data.schools.high.rating || '—'}/10
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                  <TrendingUp className="w-5 h-5 text-yellow-400" />
+                  Market Context
+                </h3>
+                <div className="space-y-3">
+                  {property.neighborhood_data.marketData.medianSalePrice && (
+                    <div className="bg-gray-800 rounded-lg p-4">
+                      <div className="text-sm text-gray-400 mb-1">Median Sale Price</div>
+                      <div className="text-2xl font-bold text-green-400">
+                        ${property.neighborhood_data.marketData.medianSalePrice.toLocaleString()}
+                      </div>
+                    </div>
+                  )}
+                  {property.neighborhood_data.marketData.priceRange && (
+                    <div className="bg-gray-800 rounded-lg p-4">
+                      <div className="text-sm text-gray-400 mb-1">Price Range</div>
+                      <div className="font-semibold">
+                        {property.neighborhood_data.marketData.priceRange}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="bg-gray-900 rounded-lg p-6 mb-6">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold text-yellow-400">Due Diligence Checklist</h2>
@@ -347,7 +556,7 @@ export default function PropertyDetail({ property, onBack, onUpdate }: PropertyD
           </div>
         </div>
 
-        <div className="bg-gray-900 rounded-lg p-6">
+        <div className="bg-gray-900 rounded-lg p-6 mb-6">
           <h2 className="text-2xl font-bold text-yellow-400 mb-4">Notes</h2>
           <textarea
             value={notes}
@@ -359,6 +568,110 @@ export default function PropertyDetail({ property, onBack, onUpdate }: PropertyD
           <div className="text-xs text-gray-500 mt-2">
             {isSavingNotes ? 'Saving...' : 'Notes are saved automatically'}
           </div>
+        </div>
+
+        <div className="bg-gray-900 rounded-lg p-6">
+          <h2 className="text-2xl font-bold text-yellow-400 mb-4 flex items-center gap-3">
+            <MessageSquare className="w-7 h-7" />
+            Community Insights Board
+          </h2>
+
+          {!property.is_verified ? (
+            <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-center">
+              <MapPin className="w-12 h-12 text-gray-600 mx-auto mb-3" />
+              <p className="text-gray-400 text-lg font-semibold">
+                Verify your visit via GPS to leave or see community insights
+              </p>
+              <p className="text-gray-500 text-sm mt-2">
+                This ensures all insights come from people who have actually visited the property
+              </p>
+            </div>
+          ) : (
+            <>
+              <div className="mb-6">
+                <h3 className="text-lg font-bold text-white mb-3">Share Your Experience</h3>
+                <div className="space-y-3">
+                  <select
+                    value={newInsightCategory}
+                    onChange={(e) => setNewInsightCategory(e.target.value)}
+                    className="w-full px-4 py-3 bg-gray-800 text-white rounded-lg border-2 border-gray-700 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400"
+                  >
+                    <option value="">Select category...</option>
+                    <option value="Red Flag">Red Flag</option>
+                    <option value="Pro">Pro</option>
+                    <option value="Noise">Noise</option>
+                    <option value="Traffic">Traffic</option>
+                    <option value="Neighbors">Neighbors</option>
+                    <option value="General">General</option>
+                  </select>
+                  <textarea
+                    value={newInsightNote}
+                    onChange={(e) => setNewInsightNote(e.target.value)}
+                    placeholder="Share what you noticed during your visit..."
+                    className="w-full h-24 px-4 py-3 bg-gray-800 text-white rounded-lg border-2 border-gray-700 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 resize-none"
+                  />
+                  <button
+                    onClick={handleSubmitInsight}
+                    disabled={isSubmittingInsight || !newInsightCategory || !newInsightNote.trim()}
+                    className="w-full px-4 py-3 bg-yellow-400 text-black rounded-lg hover:bg-yellow-300 disabled:bg-gray-700 disabled:text-gray-500 font-semibold flex items-center justify-center gap-2"
+                  >
+                    {isSubmittingInsight ? (
+                      <>
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        Posting...
+                      </>
+                    ) : (
+                      <>
+                        <MessageSquare className="w-5 h-5" />
+                        Post Insight
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <h3 className="text-lg font-bold text-white mb-3">
+                  Community Feedback ({insights.length})
+                </h3>
+                {isLoadingInsights ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="w-8 h-8 animate-spin text-yellow-400" />
+                  </div>
+                ) : insights.length === 0 ? (
+                  <div className="bg-gray-800 rounded-lg p-6 text-center">
+                    <p className="text-gray-400">
+                      No insights yet. Be the first to share your experience!
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {insights.map((insight) => (
+                      <div
+                        key={insight.id}
+                        className={`rounded-lg p-4 border ${getInsightBgColor(insight.category)}`}
+                      >
+                        <div className="flex items-start gap-3">
+                          {getInsightIcon(insight.category)}
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="font-bold text-sm text-yellow-400">
+                                {insight.category}
+                              </span>
+                              <span className="text-xs text-gray-500">
+                                {new Date(insight.created_at || '').toLocaleDateString()}
+                              </span>
+                            </div>
+                            <p className="text-white">{insight.note}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>

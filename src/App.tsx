@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Home, Save, Check, Loader2, List } from 'lucide-react';
-import { supabase, SavedProperty } from './lib/supabase';
+import { supabase, SavedProperty, NeighborhoodData } from './lib/supabase';
 import WatchlistDashboard from './components/WatchlistDashboard';
 import PropertyDetail from './components/PropertyDetail';
 
@@ -11,6 +11,7 @@ interface PropertyData {
   yearBuilt: number | null;
   latitude?: number | null;
   longitude?: number | null;
+  neighborhood?: NeighborhoodData | null;
 }
 
 interface Mismatch {
@@ -92,6 +93,7 @@ function App() {
         yearBuilt: data.yearBuilt,
         latitude: data.latitude,
         longitude: data.longitude,
+        neighborhood: data.neighborhood,
       });
     } catch (error) {
       console.error('Error fetching county data:', error);
@@ -194,6 +196,7 @@ function App() {
         latitude: countyData.latitude || null,
         longitude: countyData.longitude || null,
         notes: null,
+        neighborhood_data: countyData.neighborhood || null,
       };
 
       const { error } = await supabase

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Home, CheckCircle, AlertCircle, Trash2 } from 'lucide-react';
+import { Home, CheckCircle, AlertCircle, Trash2, GraduationCap } from 'lucide-react';
 import { supabase, SavedProperty } from '../lib/supabase';
 
 interface WatchlistDashboardProps {
@@ -85,6 +85,26 @@ export default function WatchlistDashboard({ onPropertySelect, onNewSearch }: Wa
     return count;
   };
 
+  const calculateNeighborhoodScore = (property: SavedProperty): number | null => {
+    if (!property.neighborhood_data?.schools) return null;
+    const schools = property.neighborhood_data.schools;
+    const ratings = [
+      schools.elementary?.rating,
+      schools.middle?.rating,
+      schools.high?.rating,
+    ].filter((r): r is number => r !== null && r !== undefined);
+
+    if (ratings.length === 0) return null;
+    return Math.round(ratings.reduce((sum, r) => sum + r, 0) / ratings.length);
+  };
+
+  const getScoreBgColor = (score: number | null) => {
+    if (!score) return 'bg-gray-700';
+    if (score >= 8) return 'bg-green-600';
+    if (score >= 6) return 'bg-yellow-600';
+    return 'bg-red-600';
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
@@ -137,6 +157,7 @@ export default function WatchlistDashboard({ onPropertySelect, onNewSearch }: Wa
             {properties.map((property) => {
               const progress = calculateProgress(property);
               const mismatchCount = getMismatchCount(property);
+              const neighborhoodScore = calculateNeighborhoodScore(property);
 
               return (
                 <div
@@ -157,7 +178,7 @@ export default function WatchlistDashboard({ onPropertySelect, onNewSearch }: Wa
                   >
                     <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
                       <div className="flex-1 pr-12">
-                        <div className="flex items-start gap-3 mb-3">
+                        <div className="flex items-start gap-2 mb-3 flex-wrap">
                           <h3 className="text-xl md:text-2xl font-bold text-white">
                             {property.address}
                           </h3>
@@ -165,6 +186,12 @@ export default function WatchlistDashboard({ onPropertySelect, onNewSearch }: Wa
                             <div className="flex items-center gap-1 px-3 py-1 bg-green-600 rounded-full text-sm font-semibold whitespace-nowrap">
                               <CheckCircle className="w-4 h-4" />
                               Verified
+                            </div>
+                          )}
+                          {neighborhoodScore && (
+                            <div className={`flex items-center gap-1 px-3 py-1 ${getScoreBgColor(neighborhoodScore)} rounded-full text-sm font-semibold whitespace-nowrap`}>
+                              <GraduationCap className="w-4 h-4" />
+                              {neighborhoodScore}/10
                             </div>
                           )}
                         </div>

@@ -30,6 +30,27 @@ interface AttomPropertyResponse {
         bathsTotal?: number;
       };
     };
+    school?: {
+      elementarySchool?: {
+        name?: string;
+        rating?: number;
+        distance?: number;
+      };
+      middleSchool?: {
+        name?: string;
+        rating?: number;
+        distance?: number;
+      };
+      highSchool?: {
+        name?: string;
+        rating?: number;
+        distance?: number;
+      };
+    };
+    area?: {
+      mediaSalePrice?: number;
+      medianSalePriceRange?: string;
+    };
   }>;
 }
 
@@ -79,6 +100,29 @@ Deno.serve(async (req: Request) => {
       yearBuilt: property.summary?.yearBuilt || null,
       latitude: property.address?.latitude ? parseFloat(property.address.latitude) : null,
       longitude: property.address?.longitude ? parseFloat(property.address.longitude) : null,
+      neighborhood: {
+        schools: {
+          elementary: property.school?.elementarySchool ? {
+            name: property.school.elementarySchool.name || null,
+            rating: property.school.elementarySchool.rating || null,
+            distance: property.school.elementarySchool.distance || null,
+          } : null,
+          middle: property.school?.middleSchool ? {
+            name: property.school.middleSchool.name || null,
+            rating: property.school.middleSchool.rating || null,
+            distance: property.school.middleSchool.distance || null,
+          } : null,
+          high: property.school?.highSchool ? {
+            name: property.school.highSchool.name || null,
+            rating: property.school.highSchool.rating || null,
+            distance: property.school.highSchool.distance || null,
+          } : null,
+        },
+        marketData: {
+          medianSalePrice: property.area?.mediaSalePrice || null,
+          priceRange: property.area?.medianSalePriceRange || null,
+        },
+      },
     };
 
     return new Response(JSON.stringify(propertyData), {
