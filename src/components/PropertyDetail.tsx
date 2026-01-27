@@ -167,10 +167,15 @@ export default function PropertyDetail({ property, onBack, onUpdate }: PropertyD
 
     setIsSubmittingInsight(true);
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (!user) throw new Error('User not authenticated');
+
       const { error } = await supabase
         .from('community_insights')
         .insert({
           property_id: property.id,
+          user_id: user.id,
           category: newInsightCategory,
           note: newInsightNote.trim(),
         });

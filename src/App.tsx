@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Home, Save, Check, Loader2, List } from 'lucide-react';
 import { supabase, SavedProperty, NeighborhoodData } from './lib/supabase';
+import { Session } from '@supabase/supabase-js';
 import WatchlistDashboard from './components/WatchlistDashboard';
 import PropertyDetail from './components/PropertyDetail';
+import AuthScreen from './components/AuthScreen';
 
 interface PropertyData {
   sqft: number | null;
@@ -24,12 +26,29 @@ interface Mismatch {
 type View = 'search' | 'comparison' | 'watchlist' | 'property-detail';
 
 function App() {
+  const [session, setSession] = useState<Session | null>(null);
+  const [isLoadingSession, setIsLoadingSession] = useState(true);
   const [currentView, setCurrentView] = useState<View>('watchlist');
   const [selectedProperty, setSelectedProperty] = useState<SavedProperty | null>(null);
   const [address, setAddress] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoadingCountyData, setIsLoadingCountyData] = useState(false);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setIsLoadingSession(false);
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   const [countyData, setCountyData] = useState<PropertyData>({
     sqft: null,
@@ -182,6 +201,7 @@ function App() {
       ];
 
       const propertyData: SavedProperty = {
+        user_id: session?.user?.id,
         address,
         county_sqft: countyData.sqft,
         county_bedrooms: countyData.bedrooms,
@@ -216,6 +236,21 @@ function App() {
       setIsSaving(false);
     }
   };
+
+  if (isLoadingSession) {
+    return (
+      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 text-yellow-400 animate-spin mx-auto mb-4" />
+          <p className="text-gray-400 text-lg">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!session) {
+    return <AuthScreen />;
+  }
 
   if (currentView === 'watchlist') {
     return (

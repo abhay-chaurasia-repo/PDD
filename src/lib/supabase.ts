@@ -34,8 +34,20 @@ export interface NeighborhoodData {
   };
 }
 
+export interface Profile {
+  id: string;
+  email?: string | null;
+  phone?: string | null;
+  full_name?: string | null;
+  is_paid_user: boolean;
+  free_audits_used: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export interface SavedProperty {
   id?: string;
+  user_id?: string;
   address: string;
   county_sqft: number | null;
   county_bedrooms: number | null;

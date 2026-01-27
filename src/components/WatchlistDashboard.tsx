@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Home, CheckCircle, AlertCircle, Trash2, GraduationCap } from 'lucide-react';
+import { Home, CheckCircle, AlertCircle, Trash2, GraduationCap, LogOut } from 'lucide-react';
 import { supabase, SavedProperty } from '../lib/supabase';
 
 interface WatchlistDashboardProps {
@@ -105,6 +105,14 @@ export default function WatchlistDashboard({ onPropertySelect, onNewSearch }: Wa
     return 'bg-red-600';
   };
 
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+    } catch (error) {
+      console.error('Error logging out:', error);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
@@ -125,13 +133,22 @@ export default function WatchlistDashboard({ onPropertySelect, onNewSearch }: Wa
               {properties.length} {properties.length === 1 ? 'property' : 'properties'} saved
             </p>
           </div>
-          <button
-            onClick={onNewSearch}
-            className="flex items-center gap-2 px-4 py-3 bg-yellow-400 text-black rounded-lg hover:bg-yellow-300 font-semibold"
-          >
-            <Home className="w-5 h-5" />
-            New Search
-          </button>
+          <div className="flex gap-3">
+            <button
+              onClick={onNewSearch}
+              className="flex items-center gap-2 px-4 py-3 bg-yellow-400 text-black rounded-lg hover:bg-yellow-300 font-semibold"
+            >
+              <Home className="w-5 h-5" />
+              New Search
+            </button>
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-2 px-4 py-3 bg-gray-800 text-white rounded-lg hover:bg-gray-700 font-semibold border border-gray-700"
+              title="Logout"
+            >
+              <LogOut className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {properties.length === 0 ? (
