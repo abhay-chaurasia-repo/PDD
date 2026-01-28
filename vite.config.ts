@@ -7,4 +7,11 @@ export default defineConfig({
   optimizeDeps: {
     exclude: ['lucide-react'],
   },
+  server: {
+    host: true,
+    strictPort: false,
+    hmr: {
+      clientPort: 443,
+    },
+  },
 });
