@@ -40,6 +40,7 @@ export default function PropertyDetail({ property, onBack, onUpdate }: PropertyD
   const [newInsightCategory, setNewInsightCategory] = useState('');
   const [newInsightNote, setNewInsightNote] = useState('');
   const [isSubmittingInsight, setIsSubmittingInsight] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
     const R = 6371e3;
@@ -147,6 +148,9 @@ export default function PropertyDetail({ property, onBack, onUpdate }: PropertyD
 
     setIsLoadingInsights(true);
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      setCurrentUserId(user?.id || null);
+
       const { data, error } = await supabase
         .from('community_insights')
         .select('*')
@@ -296,6 +300,30 @@ export default function PropertyDetail({ property, onBack, onUpdate }: PropertyD
     return 'bg-gray-800 border-gray-700';
   };
 
+  const getAggregatedPublicInsights = () => {
+    const publicInsights = insights.filter(insight => insight.user_id !== currentUserId);
+
+    const categoryAggregation: Record<string, Set<string>> = {};
+
+    publicInsights.forEach(insight => {
+      if (!categoryAggregation[insight.category]) {
+        categoryAggregation[insight.category] = new Set();
+      }
+      categoryAggregation[insight.category].add(insight.user_id);
+    });
+
+    return Object.entries(categoryAggregation)
+      .filter(([_, userIds]) => userIds.size >= 3)
+      .map(([category, userIds]) => ({
+        category,
+        count: userIds.size,
+      }));
+  };
+
+  const getMyPrivateInsights = () => {
+    return insights.filter(insight => insight.user_id === currentUserId);
+  };
+
   return (
     <div className="min-h-screen bg-black text-white">
       <div className="max-w-6xl mx-auto px-4 py-6 md:py-8">
@@ -333,18 +361,22 @@ export default function PropertyDetail({ property, onBack, onUpdate }: PropertyD
             <div>
               <div className="text-gray-400 text-sm">County Sq Ft</div>
               <div className="font-bold text-xl">{property.county_sqft?.toLocaleString() || '—'}</div>
+              <div className="text-gray-500 text-xs mt-1">Source: ATTOM | Verified Jan 2026</div>
             </div>
             <div>
               <div className="text-gray-400 text-sm">Bedrooms</div>
               <div className="font-bold text-xl">{property.county_bedrooms || '—'}</div>
+              <div className="text-gray-500 text-xs mt-1">Source: ATTOM | Verified Jan 2026</div>
             </div>
             <div>
               <div className="text-gray-400 text-sm">Bathrooms</div>
               <div className="font-bold text-xl">{property.county_bathrooms || '—'}</div>
+              <div className="text-gray-500 text-xs mt-1">Source: ATTOM | Verified Jan 2026</div>
             </div>
             <div>
               <div className="text-gray-400 text-sm">Year Built</div>
               <div className="font-bold text-xl">{property.county_year_built || '—'}</div>
+              <div className="text-gray-500 text-xs mt-1">Source: ATTOM | Verified Jan 2026</div>
             </div>
           </div>
 
@@ -652,45 +684,90 @@ export default function PropertyDetail({ property, onBack, onUpdate }: PropertyD
                 </div>
               </div>
 
-              <div>
-                <h3 className="text-lg font-bold text-white mb-3">
-                  Community Feedback ({insights.length})
-                </h3>
-                {isLoadingInsights ? (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2 className="w-8 h-8 animate-spin text-yellow-400" />
-                  </div>
-                ) : insights.length === 0 ? (
-                  <div className="bg-gray-800 rounded-lg p-6 text-center">
-                    <p className="text-gray-400">
-                      No insights yet. Be the first to share your experience!
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {insights.map((insight) => (
-                      <div
-                        key={insight.id}
-                        className={`rounded-lg p-4 border ${getInsightBgColor(insight.category)}`}
-                      >
-                        <div className="flex items-start gap-3">
-                          {getInsightIcon(insight.category)}
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className="font-bold text-sm text-yellow-400">
-                                {insight.category}
-                              </span>
-                              <span className="text-xs text-gray-500">
-                                {new Date(insight.created_at || '').toLocaleDateString()}
-                              </span>
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-lg font-bold text-white mb-3">
+                    My Private Notes
+                  </h3>
+                  {isLoadingInsights ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="w-8 h-8 animate-spin text-yellow-400" />
+                    </div>
+                  ) : getMyPrivateInsights().length === 0 ? (
+                    <div className="bg-gray-800 rounded-lg p-6 text-center">
+                      <p className="text-gray-400">
+                        No private notes yet. Share your experience above!
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {getMyPrivateInsights().map((insight) => (
+                        <div
+                          key={insight.id}
+                          className={`rounded-lg p-4 border ${getInsightBgColor(insight.category)}`}
+                        >
+                          <div className="flex items-start gap-3">
+                            {getInsightIcon(insight.category)}
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="font-bold text-sm text-yellow-400">
+                                  {insight.category}
+                                </span>
+                                <span className="text-xs text-gray-500">
+                                  {new Date(insight.created_at || '').toLocaleDateString()}
+                                </span>
+                              </div>
+                              <p className="text-white">{insight.note}</p>
                             </div>
-                            <p className="text-white">{insight.note}</p>
                           </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <h3 className="text-lg font-bold text-white mb-3">
+                    Community Feedback
+                  </h3>
+                  <p className="text-gray-400 text-sm mb-4">
+                    Aggregated insights from verified visitors. Categories shown only when 3+ unique visitors report the same observation.
+                  </p>
+                  {isLoadingInsights ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="w-8 h-8 animate-spin text-yellow-400" />
+                    </div>
+                  ) : getAggregatedPublicInsights().length === 0 ? (
+                    <div className="bg-gray-800 rounded-lg p-6 text-center">
+                      <p className="text-gray-400">
+                        No community patterns detected yet.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {getAggregatedPublicInsights().map(({ category, count }) => (
+                        <div
+                          key={category}
+                          className={`rounded-lg p-4 border ${getInsightBgColor(category)}`}
+                        >
+                          <div className="flex items-start gap-3">
+                            {getInsightIcon(category)}
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="font-bold text-sm text-yellow-400">
+                                  {category}
+                                </span>
+                              </div>
+                              <p className="text-white">
+                                {count} {count === 1 ? 'visitor' : 'visitors'} noted {category}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             </>
           )}

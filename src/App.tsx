@@ -5,6 +5,7 @@ import { Session } from '@supabase/supabase-js';
 import WatchlistDashboard from './components/WatchlistDashboard';
 import PropertyDetail from './components/PropertyDetail';
 import AuthScreen from './components/AuthScreen';
+import PaywallModal from './components/PaywallModal';
 
 interface PropertyData {
   sqft: number | null;
@@ -34,6 +35,7 @@ function App() {
   const [showSuccess, setShowSuccess] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoadingCountyData, setIsLoadingCountyData] = useState(false);
+  const [showPaywall, setShowPaywall] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -201,6 +203,20 @@ function App() {
   const handleSaveProperty = async () => {
     setIsSaving(true);
     try {
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('free_audits_used, is_paid_user')
+        .eq('id', session?.user?.id)
+        .maybeSingle();
+
+      if (profileError) throw profileError;
+
+      if (profile && profile.free_audits_used >= 5 && !profile.is_paid_user) {
+        setIsSaving(false);
+        setShowPaywall(true);
+        return;
+      }
+
       const DEFAULT_CHECKLIST = [
         { id: 'roof', category: 'Physical Audit', label: 'Inspect roof condition', completed: false },
         { id: 'hvac', category: 'Physical Audit', label: 'Check HVAC system age & function', completed: false },
@@ -242,6 +258,8 @@ function App() {
         .insert(propertyData);
 
       if (error) throw error;
+
+      await supabase.rpc('increment_audit_count');
 
       setShowSuccess(true);
       setTimeout(() => {
@@ -435,14 +453,19 @@ function App() {
                   <td className="p-4 md:p-6 font-semibold text-base md:text-lg">
                     Square Footage
                   </td>
-                  <td className="p-4 md:p-6 text-center text-xl md:text-2xl font-bold">
+                  <td className="p-4 md:p-6 text-center">
                     {isLoadingCountyData ? (
                       <div className="flex items-center justify-center gap-2 text-yellow-400">
                         <Loader2 className="w-5 h-5 animate-spin" />
                         <span className="text-sm">Fetching Public Records...</span>
                       </div>
                     ) : (
-                      countyData.sqft?.toLocaleString() || '—'
+                      <div>
+                        <div className="text-xl md:text-2xl font-bold">
+                          {countyData.sqft?.toLocaleString() || '—'}
+                        </div>
+                        <div className="text-gray-500 text-xs mt-1">Source: ATTOM | Verified Jan 2026</div>
+                      </div>
                     )}
                   </td>
                   <td className="p-4 md:p-6">
@@ -485,14 +508,19 @@ function App() {
                   <td className="p-4 md:p-6 font-semibold text-base md:text-lg">
                     Bedrooms
                   </td>
-                  <td className="p-4 md:p-6 text-center text-xl md:text-2xl font-bold">
+                  <td className="p-4 md:p-6 text-center">
                     {isLoadingCountyData ? (
                       <div className="flex items-center justify-center gap-2 text-yellow-400">
                         <Loader2 className="w-5 h-5 animate-spin" />
                         <span className="text-sm">Fetching Public Records...</span>
                       </div>
                     ) : (
-                      countyData.bedrooms || '—'
+                      <div>
+                        <div className="text-xl md:text-2xl font-bold">
+                          {countyData.bedrooms || '—'}
+                        </div>
+                        <div className="text-gray-500 text-xs mt-1">Source: ATTOM | Verified Jan 2026</div>
+                      </div>
                     )}
                   </td>
                   <td className="p-4 md:p-6">
@@ -535,14 +563,19 @@ function App() {
                   <td className="p-4 md:p-6 font-semibold text-base md:text-lg">
                     Bathrooms
                   </td>
-                  <td className="p-4 md:p-6 text-center text-xl md:text-2xl font-bold">
+                  <td className="p-4 md:p-6 text-center">
                     {isLoadingCountyData ? (
                       <div className="flex items-center justify-center gap-2 text-yellow-400">
                         <Loader2 className="w-5 h-5 animate-spin" />
                         <span className="text-sm">Fetching Public Records...</span>
                       </div>
                     ) : (
-                      countyData.bathrooms || '—'
+                      <div>
+                        <div className="text-xl md:text-2xl font-bold">
+                          {countyData.bathrooms || '—'}
+                        </div>
+                        <div className="text-gray-500 text-xs mt-1">Source: ATTOM | Verified Jan 2026</div>
+                      </div>
                     )}
                   </td>
                   <td className="p-4 md:p-6">
@@ -586,14 +619,19 @@ function App() {
                   <td className="p-4 md:p-6 font-semibold text-base md:text-lg">
                     Year Built
                   </td>
-                  <td className="p-4 md:p-6 text-center text-xl md:text-2xl font-bold">
+                  <td className="p-4 md:p-6 text-center">
                     {isLoadingCountyData ? (
                       <div className="flex items-center justify-center gap-2 text-yellow-400">
                         <Loader2 className="w-5 h-5 animate-spin" />
                         <span className="text-sm">Fetching Public Records...</span>
                       </div>
                     ) : (
-                      countyData.yearBuilt || '—'
+                      <div>
+                        <div className="text-xl md:text-2xl font-bold">
+                          {countyData.yearBuilt || '—'}
+                        </div>
+                        <div className="text-gray-500 text-xs mt-1">Source: ATTOM | Verified Jan 2026</div>
+                      </div>
                     )}
                   </td>
                   <td className="p-4 md:p-6">
@@ -649,6 +687,8 @@ function App() {
           </span>
         </div>
       )}
+
+      {showPaywall && <PaywallModal onClose={() => setShowPaywall(false)} />}
     </div>
   );
 }

@@ -65,7 +65,7 @@ export default function AuthScreen() {
     setError('');
 
     try {
-      const redirectUrl = `${window.location.origin}${window.location.pathname}`;
+      const redirectUrl = `${window.location.origin}/`;
       console.log('OAuth redirect URL:', redirectUrl);
 
       const { error } = await supabase.auth.signInWithOAuth({
@@ -88,7 +88,7 @@ export default function AuthScreen() {
     setError('');
 
     try {
-      const redirectUrl = `${window.location.origin}${window.location.pathname}`;
+      const redirectUrl = `${window.location.origin}/`;
       console.log('OAuth redirect URL:', redirectUrl);
 
       const { error } = await supabase.auth.signInWithOAuth({
