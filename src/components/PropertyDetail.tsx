@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, MapPin, CheckCircle, Loader2, AlertCircle, GraduationCap, TrendingUp, MessageSquare, AlertTriangle, ThumbsUp } from 'lucide-react';
+import { ArrowLeft, MapPin, CheckCircle, Loader2, AlertCircle, GraduationCap, TrendingUp, MessageSquare, AlertTriangle, ThumbsUp, LogOut } from 'lucide-react';
 import { supabase, SavedProperty, ChecklistItem, CommunityInsight } from '../lib/supabase';
 
 interface PropertyDetailProps {
@@ -192,6 +192,14 @@ export default function PropertyDetail({ property, onBack, onUpdate }: PropertyD
     }
   };
 
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+    } catch (error) {
+      console.error('Error logging out:', error);
+    }
+  };
+
   useEffect(() => {
     loadInsights();
   }, [property.id]);
@@ -291,13 +299,22 @@ export default function PropertyDetail({ property, onBack, onUpdate }: PropertyD
   return (
     <div className="min-h-screen bg-black text-white">
       <div className="max-w-6xl mx-auto px-4 py-6 md:py-8">
-        <button
-          onClick={onBack}
-          className="flex items-center gap-2 px-4 py-3 bg-gray-900 text-yellow-400 rounded-lg hover:bg-gray-800 font-semibold mb-6"
-        >
-          <ArrowLeft className="w-5 h-5" />
-          Back to Watchlist
-        </button>
+        <div className="flex justify-between items-center mb-6">
+          <button
+            onClick={onBack}
+            className="flex items-center gap-2 px-4 py-3 bg-gray-900 text-yellow-400 rounded-lg hover:bg-gray-800 font-semibold"
+          >
+            <ArrowLeft className="w-5 h-5" />
+            Back to Watchlist
+          </button>
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-2 px-4 py-3 bg-gray-900 text-gray-400 rounded-lg hover:bg-gray-800 hover:text-white font-semibold"
+          >
+            <LogOut className="w-5 h-5" />
+            Logout
+          </button>
+        </div>
 
         <div className="bg-gray-900 rounded-lg p-6 mb-6">
           <div className="flex items-start justify-between mb-4">

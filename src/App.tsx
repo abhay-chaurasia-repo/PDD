@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Home, Save, Check, Loader2, List } from 'lucide-react';
+import { Home, Save, Check, Loader2, List, LogOut } from 'lucide-react';
 import { supabase, SavedProperty, NeighborhoodData } from './lib/supabase';
 import { Session } from '@supabase/supabase-js';
 import WatchlistDashboard from './components/WatchlistDashboard';
@@ -180,6 +180,24 @@ function App() {
     yearBuilt: calculateMismatch('Year Built', countyData.yearBuilt, listingData.yearBuilt),
   };
 
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    setCurrentView('search');
+    setAddress('');
+    setCountyData({
+      sqft: null,
+      bedrooms: null,
+      bathrooms: null,
+      yearBuilt: null,
+    });
+    setListingData({
+      sqft: null,
+      bedrooms: null,
+      bathrooms: null,
+      yearBuilt: null,
+    });
+  };
+
   const handleSaveProperty = async () => {
     setIsSaving(true);
     try {
@@ -280,13 +298,20 @@ function App() {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center px-4">
         <div className="w-full max-w-2xl">
-          <div className="flex justify-end mb-4">
+          <div className="flex justify-end gap-3 mb-4">
             <button
               onClick={() => setCurrentView('watchlist')}
               className="flex items-center gap-2 px-4 py-2 bg-gray-900 text-yellow-400 rounded-lg hover:bg-gray-800 font-semibold"
             >
               <List className="w-5 h-5" />
               My Watchlist
+            </button>
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-2 px-4 py-2 bg-gray-900 text-gray-400 rounded-lg hover:bg-gray-800 hover:text-white font-semibold"
+            >
+              <LogOut className="w-5 h-5" />
+              Logout
             </button>
           </div>
 
@@ -332,7 +357,7 @@ function App() {
   return (
     <div className="min-h-screen bg-black text-white">
       <div className="max-w-6xl mx-auto px-4 py-6 md:py-8">
-        <div className="mb-6 flex gap-3">
+        <div className="mb-6 flex flex-wrap gap-3">
           <button
             onClick={() => {
               setCurrentView('search');
@@ -364,6 +389,14 @@ function App() {
           >
             <List className="w-5 h-5" />
             My Watchlist
+          </button>
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-2 px-4 py-3 bg-gray-900 text-gray-400 rounded-lg hover:bg-gray-800 hover:text-white font-semibold ml-auto"
+            style={{ minHeight: '48px' }}
+          >
+            <LogOut className="w-5 h-5" />
+            Logout
           </button>
         </div>
 
